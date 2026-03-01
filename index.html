@@ -1323,6 +1323,9 @@ function takeScreenshot() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+
+    // 生成长图之后弹窗告知用户保存地址
+    alert('✅ 长截图已成功生成！\n\n图片已自动保存到了您设备的【默认下载目录】中（如“下载”或“Downloads”文件夹）。');
   }).catch(err => {
     console.error('截图生成失败:', err);
     alert('截图生成失败，请稍后重试！');
