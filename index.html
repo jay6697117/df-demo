@@ -9,6 +9,7 @@
 <!-- 引入CDN资源，添加跨域兼容 -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <style>
   /* 全局重置 - 消除浏览器默认样式差异 */
   *{
@@ -145,7 +146,7 @@
   tbody tr:hover {
     background-color: #f1f5f9;
   }
-  
+
   /* 针对核心大表格的固定列支持 */
   .main-table th:nth-child(1), .main-table td:nth-child(1){
     position: sticky; left: 0; z-index: 11; background: inherit;
@@ -417,7 +418,85 @@
     background:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;
     padding-right:24px;
   }
+
+  /* ================= 移动端适配 (Responsive Design) ================= */
+  @media (max-width: 1024px) {
+    .year-stats {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .month-stat-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .cards {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 768px) {
+    body {
+      padding: 10px;
+    }
+    .container {
+      padding: 16px;
+      border-radius: 12px;
+    }
+    h1 {
+      font-size: 20px;
+    }
+    .year-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .month-stat-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .top-charts {
+      flex-direction: column;
+    }
+    .chart-box, .cards {
+      width: 100%;
+      min-width: unset;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .toolbar button, .toolbar select, .toolbar input {
+      flex: 1 1 45%; /* 让按钮排成两列 */
+    }
+    .toolbar .search {
+      flex: 1 1 100%; /* 搜索框占满一行 */
+    }
+
+    /* 中等屏幕：取消区域列和部分列的冻结，仅保留门店名称和锁定框 */
+    .main-table th:nth-child(3), .main-table td:nth-child(3){
+      position: static;
+      box-shadow: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .year-stats {
+      grid-template-columns: 1fr;
+    }
+    .month-stat-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .cards {
+      grid-template-columns: 1fr;
+    }
+    .toolbar button, .toolbar select {
+      flex: 1 1 100%; /* 极小屏幕下完全单列排布 */
+    }
+
+    /* 极小屏幕：取消所有除 Checkbox 外的冻结列，保证有足够空间浏览核心数据 */
+    .main-table th:nth-child(2), .main-table td:nth-child(2){
+      position: static;
+      box-shadow: none;
+    }
+  }
 </style>
+
 </head>
 <body>
 <div class="container">
@@ -526,6 +605,7 @@
 
   <!-- 工具栏 -->
   <div class="toolbar">
+    <button onclick="takeScreenshot()" class="btn-blue cursor-pointer" id="screenshotBtn">📸 生成长截图</button>
     <button onclick="addStore()" class="btn-green cursor-pointer">➕ 新增门店</button>
     <button onclick="delStore()" class="btn-red cursor-pointer">➖ 删除选中</button>
     <button onclick="exportExcel()" class="btn-blue cursor-pointer">📤 导出Excel</button>
@@ -562,7 +642,7 @@ let AREAS = ['北京','上海','广州','深圳']; // 区域数据
 let YEAR_TARGET = 50; // 年度目标
 let PIE_CHART, BAR_CHART; // 饼图+柱状图
 // 统一日期处理：兼容不同浏览器的日期解析
-const TODAY = new Date(); 
+const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
 const SAVE_DELAY = 800; // 自动保存延迟
 let saveTimer = null;
@@ -597,7 +677,7 @@ function filterStoreData() {
     const itemStatus = item.status || '';
     const itemName = (item.name || '').toLowerCase();
     const itemManager = (item.manager || '').toLowerCase();
-    
+
     const areaMatch = !areaFilter || itemArea === areaFilter;
     const statusMatch = !statusFilter || itemStatus === statusFilter;
     const searchMatch = !searchText || itemName.includes(searchText) || itemArea.includes(searchText) || itemManager.includes(searchText);
@@ -754,12 +834,12 @@ function renderPlanDetail(data) {
     filterItems.forEach(item => {
       const warnText = item.warn === '已延期' ? `<span class="warn-late">已延期</span>` : `<span class="warn-normal">正常</span>`;
       html += `<tr>
-        <td>${item.name || '-'}</td>
-        <td>${item.area || '-'}</td>
-        <td>${item.planDate || '-'}</td>
-        <td>${item.manager || '-'}</td>
-        <td class="status-${(item.status || '').replace(/已|中|未启动/g,'').toLowerCase()}">${item.status || '-'}</td>
-        <td>${warnText}</td>
+        <td data-label="门店名称">${item.name || '-'}</td>
+        <td data-label="所属区域">${item.area || '-'}</td>
+        <td data-label="预计开业日期">${item.planDate || '-'}</td>
+        <td data-label="负责人">${item.manager || '-'}</td>
+        <td data-label="当前状态" class="status-${(item.status || '').replace(/已|中|未启动/g,'').toLowerCase()}">${item.status || '-'}</td>
+        <td data-label="预警状态">${warnText}</td>
       </tr>`;
     });
   }
@@ -781,12 +861,12 @@ function renderActualDetail(data) {
     filterItems.forEach(item => {
       const warnText = item.warn === '已延期' ? `<span class="warn-late">已延期</span>` : `<span class="warn-normal">正常</span>`;
       html += `<tr>
-        <td>${item.name || '-'}</td>
-        <td>${item.area || '-'}</td>
-        <td>${item.realDate || '-'}</td>
-        <td>${item.manager || '-'}</td>
-        <td class="status-${(item.status || '').replace(/已|中|未启动/g,'').toLowerCase()}">${item.status || '-'}</td>
-        <td>${warnText}</td>
+        <td data-label="门店名称">${item.name || '-'}</td>
+        <td data-label="所属区域">${item.area || '-'}</td>
+        <td data-label="实际开业日期">${item.realDate || '-'}</td>
+        <td data-label="负责人">${item.manager || '-'}</td>
+        <td data-label="当前状态" class="status-${(item.status || '').replace(/已|中|未启动/g,'').toLowerCase()}">${item.status || '-'}</td>
+        <td data-label="预警状态">${warnText}</td>
       </tr>`;
     });
   }
@@ -804,8 +884,9 @@ function renderMainTable(data) {
       const progress = Math.round((finishStep / 9) * 100);
       // 步骤下拉框
       let stepsHtml = '';
+      const stepNames = ['签约','图纸','装修','水电','设备','培训','证照','验收','物料'];
       (item.steps || Array(9).fill('未开始')).forEach((val, sIdx) => {
-        stepsHtml += `<td>
+        stepsHtml += `<td data-label="${stepNames[sIdx]}进度">
           <select onchange="updateStep(${idx}, ${sIdx}, this.value)" class="cursor-pointer">
             <option value="未开始" ${val==='未开始'?'selected':''}>未开始</option>
             <option value="进行中" ${val==='进行中'?'selected':''}>进行中</option>
@@ -824,23 +905,23 @@ function renderMainTable(data) {
       </select>
       <input onblur="updateData(${idx}, 'rectify', this.value)" placeholder="整改措施" value="${item.rectify || ''}" style="margin-top:6px;">`;
       // 预警状态标红
-      const warnStatus = (item.warn || '正常') === '已延期' 
-        ? `<span class="warn-late">已延期</span>` 
+      const warnStatus = (item.warn || '正常') === '已延期'
+        ? `<span class="warn-late">已延期</span>`
         : `<span class="warn-normal">正常</span>`;
       // 行渲染
       html += `<tr>
-        <td><input type="checkbox" value="${idx}" class="cursor-pointer"></td>
-        <td><input onblur="updateData(${idx}, 'name', this.value)" value="${item.name || ''}" placeholder="门店名称"></td>
-        <td><input onblur="updateData(${idx}, 'area', this.value)" value="${item.area || ''}" placeholder="区域"></td>
-        <td><input onblur="updateData(${idx}, 'manager', this.value)" value="${item.manager || ''}" placeholder="负责人"></td>
-        <td><input type="date" onchange="updateData(${idx}, 'planDate', this.value)" value="${item.planDate || ''}" class="cursor-pointer"></td>
-        <td><input type="date" onchange="updateData(${idx}, 'realDate', this.value)" value="${item.realDate || ''}" class="cursor-pointer"></td>
+        <td data-label="选择操作"><input type="checkbox" value="${idx}" class="cursor-pointer"></td>
+        <td data-label="门店名称"><input onblur="updateData(${idx}, 'name', this.value)" value="${item.name || ''}" placeholder="输入门店名称"></td>
+        <td data-label="所属区域"><input onblur="updateData(${idx}, 'area', this.value)" value="${item.area || ''}" placeholder="输入区域"></td>
+        <td data-label="负责人"><input onblur="updateData(${idx}, 'manager', this.value)" value="${item.manager || ''}" placeholder="输入负责人姓名"></td>
+        <td data-label="预计开业"><input type="date" onchange="updateData(${idx}, 'planDate', this.value)" value="${item.planDate || ''}" class="cursor-pointer"></td>
+        <td data-label="实际开业"><input type="date" onchange="updateData(${idx}, 'realDate', this.value)" value="${item.realDate || ''}" class="cursor-pointer"></td>
         ${stepsHtml}
-        <td><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div><div class="progress-text">${progress}%</div></div></td>
-        <td class="status-${(item.status || '').replace(/已|中|未启动/g,'').toLowerCase()}">${item.status || '-'}</td>
-        <td>${warnStatus}</td>
-        <td><input onblur="updateData(${idx}, 'note', this.value)" value="${item.note || ''}" placeholder="卡点备注"></td>
-        <td>${delayHtml}</td>
+        <td data-label="整体进度"><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div><div class="progress-text">${progress}%</div></div></td>
+        <td data-label="当前状态" class="status-${(item.status || '').replace(/已|中|未启动/g,'').toLowerCase()}">${item.status || '-'}</td>
+        <td data-label="预警状态">${warnStatus}</td>
+        <td data-label="卡点备注"><input onblur="updateData(${idx}, 'note', this.value)" value="${item.note || ''}" placeholder="卡点备注"></td>
+        <td data-label="延期 / 整改">${delayHtml}</td>
       </tr>`;
     });
   }
@@ -853,12 +934,12 @@ function initCharts() {
   PIE_CHART = new Chart(document.getElementById('pieChart'), {
     type: 'doughnut',
     data: { labels: ['已开业','筹建中','签约中','未启动'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#10b981','#f59e0b','#3b82f6','#9ca3af'] }] },
-    options: { 
-      responsive: true, 
-      maintainAspectRatio: false, 
-      animation: false, 
-      cutout: '60%', 
-      plugins: { 
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      cutout: '60%',
+      plugins: {
         legend: { position: 'bottom', font: { size: 12 } },
         tooltip: {
           mode: 'index',
@@ -880,14 +961,14 @@ function initCharts() {
   BAR_CHART = new Chart(document.getElementById('barChart'), {
     type: 'bar',
     data: { labels: ['已开业','筹建中','签约中'], datasets: [{ label: '门店数量', data: [0,0,0], backgroundColor: ['#10b981','#f59e0b','#3b82f6'], borderRadius: 4 }] },
-    options: { 
-      responsive: true, 
-      maintainAspectRatio: false, 
-      animation: false, 
-      plugins: { legend: { display: false } }, 
-      scales: { 
-        y: { 
-          beginAtZero: true, 
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
           ticks: { stepSize: 1 },
           // 兼容Firefox的坐标轴渲染
           grid: {
@@ -1207,6 +1288,40 @@ function importExcel(e) {
     document.getElementById('fileInput').value = '';
   };
   reader.readAsArrayBuffer(file);
+}
+
+// 网页长图生成功能
+function takeScreenshot() {
+  const container = document.querySelector('.container');
+  const btn = document.getElementById('screenshotBtn');
+  const originalText = btn.innerHTML;
+
+  // 提示用户并禁用按钮防止重复点击
+  btn.innerHTML = '⏳ 正在生成...';
+  btn.disabled = true;
+
+  html2canvas(container, {
+    scale: 2, // 提高导出图片的清晰度
+    useCORS: true, // 允许加载跨域图片
+    backgroundColor: '#fff' // 防止部分区域透明导致变黑
+  }).then(canvas => {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+
+    // 转换为图片并自动下载
+    const imgUrl = canvas.toDataURL("image/png");
+    const a = document.createElement('a');
+    a.href = imgUrl;
+    a.download = `兰熊门店筹建系统长图_${new Date().toLocaleDateString().replace(/\//g,'-')}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }).catch(err => {
+    console.error('截图生成失败:', err);
+    alert('截图生成失败，请稍后重试！');
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  });
 }
 </script>
 </body>
