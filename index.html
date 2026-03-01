@@ -251,13 +251,13 @@
   /* 统计模块 */
   .year-progress{background:#f8f9ff;}
   .year-stats{
-    display:grid;
     grid-template-columns:repeat(5,1fr);
     gap:12px;
     margin-top:15px;
     /* 兼容不支持grid的浏览器（如IE11） */
     display:-webkit-box;
     display:-ms-flexbox;
+    display:grid;
     -ms-flex-wrap:wrap;
   }
   /* 兼容grid布局的备用样式 */
@@ -274,6 +274,7 @@
     -webkit-box-flex:1;
     -ms-flex:1 0 18%;
     flex:1 0 18%;
+    /* Fallback width logic for grid items if grid isn't applied correctly */
     margin:0 5px 10px;
   }
   .year-stat-label{font-size:14px;color:#666;margin-bottom:4px;}
@@ -282,13 +283,13 @@
 
   .month-plan-stat{background:#f8f9ff;}
   .month-stat-grid{
-    display:grid;
     grid-template-columns:repeat(6,1fr);
     gap:10px;
     margin-bottom:15px;
     /* 兼容grid */
     display:-webkit-box;
     display:-ms-flexbox;
+    display:grid;
     -ms-flex-wrap:wrap;
   }
   .month-stat-card{
@@ -333,12 +334,12 @@
   .cards{
     flex:1;
     min-width:300px;
-    display:grid;
     grid-template-columns:repeat(4,1fr);
     gap:16px;
     /* 兼容grid */
     display:-webkit-box;
     display:-ms-flexbox;
+    display:grid;
     -ms-flex-wrap:wrap;
   }
   .card{
@@ -421,6 +422,12 @@
 
   /* ================= 移动端适配 (Responsive Design) ================= */
   @media (max-width: 1024px) {
+    .year-stat-item, .month-stat-card, .card {
+      -webkit-box-flex: auto !important;
+      -ms-flex: auto !important;
+      flex: auto !important;
+      max-width: none !important;
+    }
     .year-stats {
       grid-template-columns: repeat(3, 1fr);
     }
