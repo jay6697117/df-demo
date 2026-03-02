@@ -732,14 +732,19 @@ function calcAllStats(filterData) {
         case '签约中': areaYearStats[item.area].signing++; break;
       }
       // 区域月度统计（兼容日期解析）
-      if (item.planDate) {
+      // 已开业：按实际开业日期统计
+      if (item.status === '已开业' && item.realDate) {
+        const realDate = new Date(item.realDate + 'T00:00:00');
+        if (!isNaN(realDate.getTime()) && realDate.getMonth() === curMonth) {
+          areaMonthStats[item.area].opened++;
+        }
+      }
+      // 筹建中、签约中：按计划开业日期统计
+      if (item.planDate && (item.status === '筹建中' || item.status === '签约中')) {
         const planDate = new Date(item.planDate + 'T00:00:00');
         if (!isNaN(planDate.getTime()) && planDate.getMonth() === curMonth) {
-          switch(item.status) {
-            case '已开业': areaMonthStats[item.area].opened++; break;
-            case '筹建中': areaMonthStats[item.area].building++; break;
-            case '签约中': areaMonthStats[item.area].signing++; break;
-          }
+          if (item.status === '筹建中') areaMonthStats[item.area].building++;
+          if (item.status === '签约中') areaMonthStats[item.area].signing++;
         }
       }
     }
